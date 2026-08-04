@@ -33,7 +33,10 @@ jobs:
 
       - name: build-minio
         run: |
-          TAG="quay.io/minio/minio:${{ steps.vars.outputs.sha_short }}" make docker
+          docker build \
+            --file creatorsignal/Dockerfile \
+            --tag "quay.io/minio/minio:${{ steps.vars.outputs.sha_short }}" \
+            .
 
       - name: multipart uploads test
         run: |
