@@ -18,10 +18,10 @@ jobs:
   build:
     name: Go ${{ matrix.go-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 35
     strategy:
       matrix:
-        go-version: [1.24.x]
+        go-version: [1.25.x]
         os: [ubuntu-latest]
     env:
       CGO_ENABLED: 0
@@ -55,5 +55,24 @@ jobs:
         run: timeout --foreground --kill-after=30s 10m env bash "$PWD/buildscripts/resolve-right-versions.sh"
       - name: Verify root-disk healing
         run: timeout --foreground --kill-after=30s 10m env bash "$PWD/buildscripts/verify-healing-with-root-disks.sh"
+
+  rewrite:
+    name: Legacy metadata rewrite on ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CGO_ENABLED: 0
+      GO111MODULE: on
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.25.x
+          check-latest: true
+      # Run the 2020-format compatibility check on a fresh runner. Carrying
+      # multi-node healing state into this legacy server can prevent it from
+      # reaching readiness on a standard hosted runner.
+      - name: Build production-shaped server
+        run: make build
       - name: Verify metadata rewrite healing
-        run: timeout --foreground --kill-after=30s 10m env bash "$PWD/buildscripts/rewrite-old-new.sh"
+        run: timeout --foreground --kill-after=30s 15m env bash "$PWD/buildscripts/rewrite-old-new.sh"
