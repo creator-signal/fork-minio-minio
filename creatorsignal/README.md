@@ -12,6 +12,7 @@ The service-admission decision is **Extend**: this remains the existing MinIO ob
 | `mds/` | Rebuildable MinIO design-system dependency used by the console UI | original `minio/mds` tag `v1.0.4`, commit `027fb7f9834e2bd6daba7f62a9d04d9a3606fbe1` |
 | `build.sh` | Reproducible Creator Signal version metadata and binary build | Creator Signal |
 | `Dockerfile` | Fork-owned multi-architecture runtime image | Creator Signal |
+| `mint.Dockerfile` | Reproducible archived Mint compatibility-test image | `minio/mint` commit `befedef1f35389666df0885fe2157118c6f425c3` with Creator Signal dependency pins |
 | `scripts/` | Fork-specific security and compatibility gates | Creator Signal |
 
 The original console and MDS AGPL licenses, copyright notices, source, generated clients and built assets are retained in their respective directories. Creator Signal modifications remain under the same AGPL-3.0-or-later terms.
@@ -39,6 +40,7 @@ These are console HTTP handlers and panels backed by MinIO's retained S3/admin A
 - The UI is rebuilt from committed source and lockfile. High and critical production dependency advisories fail CI.
 - `GHSA-qwww-vcr4-c8h2` is the sole documented high-severity reachability exception: it affects React Router RSC action handling, while this console uses `BrowserRouter` declarative mode and no React Server Components. The audit script invalidates the exception if RSC markers appear.
 - The image pipeline scans the built runtime for fixed high/critical vulnerabilities and emits an OCI SBOM plus provenance attestations.
+- Legacy Mint CI builds its test image from the last compatible source revision and date-aligned client releases; it never consumes the moving `minio/mint:edge` image.
 - Release UI builds omit platform-dependent source maps, keeping generated assets reproducible without publishing bundled source content.
 - The distribution builds with Go `1.25.12` and an Alpine `3.23` runtime. Root-module security pins refresh the archived server's vulnerable standard library, cryptography, networking, telemetry, gRPC and Prometheus dependency graph without changing MinIO feature code.
 - The fork is frozen by default. Dependency or base-image refreshes require a reviewed issue, regenerated UI assets, the full compatibility gate and a new immutable release tag.

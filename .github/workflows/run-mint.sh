@@ -22,8 +22,11 @@ cd .github/workflows/mint
 # Mint workflow instead of relying on stale `latest` or moving `edge` tags.
 if ! docker image inspect "${MINT_IMAGE}" >/dev/null 2>&1; then
 	docker build \
+		--build-arg "MINT_SOURCE_COMMIT=${MINT_SOURCE_COMMIT}" \
+		--build-context "mint-source=https://github.com/minio/mint.git#${MINT_SOURCE_COMMIT}" \
+		--file ../../../creatorsignal/mint.Dockerfile \
 		--tag "${MINT_IMAGE}" \
-		"https://github.com/minio/mint.git#${MINT_SOURCE_COMMIT}"
+		../../..
 fi
 
 docker compose -f minio-${MODE}.yaml up -d
