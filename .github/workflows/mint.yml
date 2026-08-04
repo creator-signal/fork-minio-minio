@@ -16,13 +16,9 @@ permissions:
 
 jobs:
   mint-test:
-    runs-on: mint
+    runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - name: cleanup #https://github.com/actions/checkout/issues/273
-        run: |
-          sudo -S rm -rf ${GITHUB_WORKSPACE}
-          mkdir ${GITHUB_WORKSPACE}
       - name: checkout-step
         uses: actions/checkout@v4
 
@@ -33,7 +29,7 @@ jobs:
 
       - name: github sha short
         id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: build-minio
         run: |
@@ -41,19 +37,19 @@ jobs:
 
       - name: multipart uploads test
         run: |
-          ${GITHUB_WORKSPACE}/.github/workflows/multipart/migrate.sh "${{ steps.vars.outputs.sha_short }}"
+          "${GITHUB_WORKSPACE}/.github/workflows/multipart/migrate.sh" "${{ steps.vars.outputs.sha_short }}"
 
       - name: compress and encrypt
         run: |
-          ${GITHUB_WORKSPACE}/.github/workflows/run-mint.sh "compress-encrypt" "minio" "minio123" "${{ steps.vars.outputs.sha_short }}"
+          "${GITHUB_WORKSPACE}/.github/workflows/run-mint.sh" "compress-encrypt" "minio" "minio123" "${{ steps.vars.outputs.sha_short }}"
 
       - name: multiple pools
         run: |
-          ${GITHUB_WORKSPACE}/.github/workflows/run-mint.sh "pools" "minio" "minio123" "${{ steps.vars.outputs.sha_short }}"
+          "${GITHUB_WORKSPACE}/.github/workflows/run-mint.sh" "pools" "minio" "minio123" "${{ steps.vars.outputs.sha_short }}"
 
       - name: standalone erasure
         run: |
-          ${GITHUB_WORKSPACE}/.github/workflows/run-mint.sh "erasure" "minio" "minio123" "${{ steps.vars.outputs.sha_short }}"
+          "${GITHUB_WORKSPACE}/.github/workflows/run-mint.sh" "erasure" "minio" "minio123" "${{ steps.vars.outputs.sha_short }}"
 
       # FIXME: renable this back when we have a valid way to add deadlines for PUT()s (internode CreateFile)
       # - name: resiliency
@@ -63,19 +59,19 @@ jobs:
       - name: The job must cleanup
         if: ${{ always() }}
         run: |
-          export JOB_NAME=${{ steps.vars.outputs.sha_short }}
-          for mode in $(echo compress-encrypt pools erasure); do
-             docker-compose -f ${GITHUB_WORKSPACE}/.github/workflows/mint/minio-${mode}.yaml down || true
-             docker-compose -f ${GITHUB_WORKSPACE}/.github/workflows/mint/minio-${mode}.yaml rm || true
+          export JOB_NAME="${{ steps.vars.outputs.sha_short }}"
+          for mode in compress-encrypt pools erasure; do
+             docker compose -f "${GITHUB_WORKSPACE}/.github/workflows/mint/minio-${mode}.yaml" down || true
+             docker compose -f "${GITHUB_WORKSPACE}/.github/workflows/mint/minio-${mode}.yaml" rm || true
           done
 
-          docker-compose -f ${GITHUB_WORKSPACE}/.github/workflows/multipart/docker-compose-site1.yaml rm -s -f || true
-          docker-compose -f ${GITHUB_WORKSPACE}/.github/workflows/multipart/docker-compose-site2.yaml rm -s -f || true
-          for volume in $(docker volume ls -q | grep minio); do
-            docker volume rm ${volume} || true
+          docker compose -f "${GITHUB_WORKSPACE}/.github/workflows/multipart/docker-compose-site1.yaml" rm -s -f || true
+          docker compose -f "${GITHUB_WORKSPACE}/.github/workflows/multipart/docker-compose-site2.yaml" rm -s -f || true
+          docker volume ls -q | grep minio | while IFS= read -r volume; do
+            docker volume rm "$volume" || true
           done
 
-          docker rmi -f quay.io/minio/minio:${{ steps.vars.outputs.sha_short }}
+          docker rmi -f "quay.io/minio/minio:${{ steps.vars.outputs.sha_short }}"
           docker system prune -f || true
           docker volume prune -f || true
-          docker volume rm $(docker volume ls -q -f dangling=true) || true
+          docker volume ls -q -f dangling=true | xargs -r docker volume rm || true
