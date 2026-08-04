@@ -1,8 +1,6 @@
 module github.com/minio/console
 
-go 1.23
-
-toolchain go1.23.6
+go 1.24
 
 require (
 	github.com/blang/semver/v4 v4.0.0
@@ -19,7 +17,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/uuid v1.6.0
 	github.com/jessevdk/go-flags v1.6.1
-	github.com/klauspost/compress v1.17.11
+	github.com/klauspost/compress v1.18.7
 	github.com/minio/cli v1.24.2
 	github.com/minio/highwayhash v1.0.3
 	github.com/minio/kes v0.24.0
