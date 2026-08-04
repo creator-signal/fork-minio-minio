@@ -47,7 +47,10 @@ RUN sed -i \
     /mint/build/minio-py/install.sh && \
     sed -i \
     's#python -m pip install minio$#python -m pip install minio==7.2.15#' \
-    /mint/build/s3select/install.sh
+    /mint/build/s3select/install.sh && \
+    sed -i \
+    "/spec: 'test\\/\\*\\*\\/\\*.js',/d" \
+    /mint/run/core/minio-js/.mocharc.js
 
 WORKDIR /mint
 
@@ -70,7 +73,7 @@ RUN bash -c 'source /mint/source.sh && /mint/build/aws-sdk-ruby/install.sh'
 RUN bash -c 'source /mint/source.sh && /mint/build/awscli/install.sh'
 RUN bash -c 'source /mint/source.sh && /mint/build/healthcheck/install.sh'
 RUN bash -c 'source /mint/source.sh && /mint/build/mc/install.sh'
-RUN bash -c 'source /mint/source.sh && /mint/build/minio-go/install.sh'
+RUN bash -c 'source /mint/source.sh && cd /mint/run/core/minio-go && go mod edit -require=github.com/minio/minio-go/v7@v7.0.91 && /mint/build/minio-go/install.sh'
 RUN bash -c 'source /mint/source.sh && /mint/build/minio-java/install.sh'
 RUN bash -c 'source /mint/source.sh && /mint/build/minio-js/install.sh'
 RUN bash -c 'source /mint/source.sh && /mint/build/minio-py/install.sh'

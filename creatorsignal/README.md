@@ -1,6 +1,6 @@
 # Creator Signal MinIO distribution
 
-This directory is the isolation boundary for Creator Signal's maintained MinIO distribution. The MinIO server outside this directory remains at archived upstream commit `7aac2a2c5b7c882e68c1ce017d8256be2feea27f`. Root `go.mod` contains the single integration point that replaces the reduced console dependency with `./creatorsignal/console`.
+This directory is the isolation boundary for Creator Signal's maintained MinIO distribution. The MinIO server outside this directory remains at archived upstream commit `7aac2a2c5b7c882e68c1ce017d8256be2feea27f`, except for two reviewed integration points: root `go.mod` replaces the reduced console dependency with `./creatorsignal/console`, and `cmd/api-response.go` preserves HTTP flushing through the archived response-tracking wrapper so notification streams remain usable.
 
 The service-admission decision is **Extend**: this remains the existing MinIO object-storage service. The compatibility source restores interfaces removed from the Community console; it does not introduce another server, database, identity provider, bucket, or operator dashboard.
 
@@ -14,6 +14,7 @@ The service-admission decision is **Extend**: this remains the existing MinIO ob
 | `Dockerfile` | Fork-owned multi-architecture runtime image | Creator Signal |
 | `mint.Dockerfile` | Reproducible archived Mint compatibility-test image | `minio/mint` commit `befedef1f35389666df0885fe2157118c6f425c3` with Creator Signal dependency pins |
 | `scripts/` | Fork-specific security and compatibility gates | Creator Signal |
+| `../cmd/api-response.go` | Narrow streaming-response integration hook, covered by `TestTrackingResponseWriter` | archived server code with Creator Signal flush delegation |
 
 The original console and MDS AGPL licenses, copyright notices, source, generated clients and built assets are retained in their respective directories. Creator Signal modifications remain under the same AGPL-3.0-or-later terms.
 

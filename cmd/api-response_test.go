@@ -130,7 +130,7 @@ func TestGetURLScheme(t *testing.T) {
 func TestTrackingResponseWriter(t *testing.T) {
 	rw := httptest.NewRecorder()
 	trw := &trackingResponseWriter{ResponseWriter: rw}
-	trw.WriteHeader(123)
+	trw.WriteHeader(299)
 	if !trw.headerWritten {
 		t.Fatal("headerWritten was not set by WriteHeader call")
 	}
@@ -142,7 +142,7 @@ func TestTrackingResponseWriter(t *testing.T) {
 
 	// Check that WriteHeader and Write were called on the underlying response writer
 	resp := rw.Result()
-	if resp.StatusCode != 123 {
+	if resp.StatusCode != 299 {
 		t.Fatalf("unexpected status: %v", resp.StatusCode)
 	}
 	body, err := io.ReadAll(resp.Body)
@@ -151,6 +151,12 @@ func TestTrackingResponseWriter(t *testing.T) {
 	}
 	if string(body) != "hello" {
 		t.Fatalf("response body incorrect: %v", string(body))
+	}
+
+	// Streaming APIs must retain flush support through the tracking wrapper.
+	trw.Flush()
+	if !rw.Flushed {
+		t.Fatal("Flush was not forwarded to the underlying response writer")
 	}
 
 	// Check that Unwrap works
