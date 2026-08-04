@@ -15,4 +15,5 @@ jobs:
         # Declarative BrowserRouter does not expose the advisory's RSC action
         # path. The fork audit rejects this exception if RSC code is introduced.
         with:
+          fail-on-severity: high
           allow-ghsas: GHSA-qwww-vcr4-c8h2

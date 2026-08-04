@@ -38,7 +38,7 @@ LABEL org.opencontainers.image.title="Creator Signal MinIO" \
       io.creatorsignal.minio.console="github.com/minio/console@v1.7.6"
 
 RUN apk upgrade --no-cache && \
-    apk add --no-cache ca-certificates curl
+    apk add --no-cache ca-certificates coreutils curl
 
 ENV MINIO_ACCESS_KEY_FILE=access_key \
     MINIO_SECRET_KEY_FILE=secret_key \
