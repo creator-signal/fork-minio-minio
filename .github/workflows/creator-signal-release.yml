@@ -1,0 +1,262 @@
+name: Creator Signal Build and Release
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+    tags:
+      - "RELEASE.*.creatorsignal.*"
+
+concurrency:
+  group: creator-signal-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+permissions:
+  contents: read
+
+env:
+  MINIO_BASE_RELEASE: RELEASE.2025-10-15T17-29-55Z
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  validate:
+    name: Validate fork distribution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: 1.25.12
+          cache-dependency-path: |
+            go.sum
+            creatorsignal/console/go.sum
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: yarn
+          cache-dependency-path: creatorsignal/console/web-app/yarn.lock
+
+      - name: Install pinned Yarn
+        run: npm install --global --ignore-scripts yarn@1.22.22
+
+      - name: Validate release workflow
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/creator-signal-release.yml
+
+      - name: Validate build script
+        run: >-
+          docker run --rm --read-only --network=none
+          -v "$PWD:/mnt:ro"
+          koalaman/shellcheck-alpine:v0.11.0@sha256:9955be09ea7f0dbf7ae942ac1f2094355bb30d96fffba0ec09f5432207544002
+          shellcheck /mnt/creatorsignal/build.sh
+
+      - name: Verify root module graph
+        run: |
+          go mod verify
+          go mod tidy -compat=1.21 -diff
+
+      - name: Verify console module graph
+        working-directory: creatorsignal/console
+        run: go mod verify
+
+      - name: Verify console compatibility
+        working-directory: creatorsignal/console
+        run: go test ./api -run TestCreatorSignal -v
+
+      - name: Verify server integration compiles
+        run: go test ./cmd -run '^$'
+
+      - name: Rebuild console UI
+        working-directory: creatorsignal/console/web-app
+        env:
+          CI: "true"
+        run: |
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          yarn build
+
+      - name: Verify generated console assets
+        run: git diff --exit-code -- creatorsignal/console/web-app/build creatorsignal/console/web-app/yarn.lock
+
+      - name: Audit production UI dependencies
+        run: node creatorsignal/scripts/check-console-audit.mjs
+
+      - name: Build binary
+        env:
+          CREATOR_SIGNAL_COMMIT: ${{ github.sha }}
+        run: sh creatorsignal/build.sh dist/minio-linux-amd64
+
+      - name: Smoke test binary
+        run: ./dist/minio-linux-amd64 --version
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build validation image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: creatorsignal/Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: creator-signal-minio:validation
+          build-args: |
+            CREATOR_SIGNAL_COMMIT=${{ github.sha }}
+            CREATOR_SIGNAL_VERSION=DEVELOPMENT.creatorsignal
+            MINIO_BASE_RELEASE=${{ env.MINIO_BASE_RELEASE }}
+
+      - name: Smoke test validation image
+        run: docker run --rm creator-signal-minio:validation --version
+
+      - name: Scan validation image
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: creator-signal-minio:validation
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+  binaries:
+    name: Release binary (${{ matrix.arch }})
+    if: startsWith(github.ref, 'refs/tags/RELEASE.') && contains(github.ref_name, '.creatorsignal.')
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      matrix:
+        arch:
+          - amd64
+          - arm64
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: 1.25.12
+
+      - name: Build release binary
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.arch }}
+          CREATOR_SIGNAL_VERSION: ${{ github.ref_name }}
+          CREATOR_SIGNAL_COMMIT: ${{ github.sha }}
+        run: |
+          sh creatorsignal/build.sh dist/minio-linux-${{ matrix.arch }}
+          sha256sum dist/minio-linux-${{ matrix.arch }} > dist/minio-linux-${{ matrix.arch }}.sha256
+
+      - name: Attest binary provenance
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: dist/minio-linux-${{ matrix.arch }}
+
+      - name: Upload release binary
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: minio-linux-${{ matrix.arch }}
+          path: |
+            dist/minio-linux-${{ matrix.arch }}
+            dist/minio-linux-${{ matrix.arch }}.sha256
+          if-no-files-found: error
+
+  image:
+    name: Publish multi-architecture image
+    if: startsWith(github.ref, 'refs/tags/RELEASE.') && contains(github.ref_name, '.creatorsignal.')
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: metadata
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ github.ref_name }}
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Build and publish image
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: creatorsignal/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          sbom: true
+          provenance: mode=max
+          build-args: |
+            CREATOR_SIGNAL_COMMIT=${{ github.sha }}
+            CREATOR_SIGNAL_VERSION=${{ github.ref_name }}
+            MINIO_BASE_RELEASE=${{ env.MINIO_BASE_RELEASE }}
+
+      - name: Attest image provenance
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  github-release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/RELEASE.') && contains(github.ref_name, '.creatorsignal.')
+    needs:
+      - binaries
+      - image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download binaries
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --generate-notes \
+            --title "Creator Signal MinIO ${GITHUB_REF_NAME}"

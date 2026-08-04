@@ -1,0 +1,4 @@
+# Preserve the exact upstream whitespace in the Creator Signal compatibility
+# source snapshots. Local integration files remain subject to normal checks.
+creatorsignal/console/** -whitespace
+creatorsignal/mds/** -whitespace
