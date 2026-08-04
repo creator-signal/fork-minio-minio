@@ -20,6 +20,9 @@ permissions:
 env:
   MINIO_BASE_RELEASE: RELEASE.2025-10-15T17-29-55Z
   IMAGE_NAME: ghcr.io/${{ github.repository }}
+  # The archived server root declares Yarn 4; the restored console is pinned to
+  # Yarn 1 and must not inherit that unrelated package-manager selection.
+  COREPACK_ENABLE_PROJECT_SPEC: "0"
 
 jobs:
   validate:

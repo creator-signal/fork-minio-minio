@@ -19,4 +19,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHFMT_OPTS: "-s"
         with:
+          sh_checker_exclude: "^creatorsignal/(console|mds)/"
           sh_checker_shellcheck_disable: true # disable for now
