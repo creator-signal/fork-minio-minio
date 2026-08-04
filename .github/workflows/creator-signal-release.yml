@@ -86,7 +86,7 @@ jobs:
       - name: Verify generated console assets
         run: git diff --exit-code -- creatorsignal/console/web-app/build creatorsignal/console/web-app/yarn.lock
 
-      - name: Audit production UI dependencies
+      - name: Audit full console dependency graph
         run: node creatorsignal/scripts/check-console-audit.mjs
 
       - name: Build binary

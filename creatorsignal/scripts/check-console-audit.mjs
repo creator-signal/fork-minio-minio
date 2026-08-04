@@ -46,8 +46,8 @@ for (const marker of rscMarkers) {
 const yarnCommand = process.platform === "win32" ? process.env.ComSpec : "yarn";
 const yarnArguments =
   process.platform === "win32"
-    ? ["/d", "/s", "/c", "yarn audit --groups dependencies --json"]
-    : ["audit", "--groups", "dependencies", "--json"];
+    ? ["/d", "/s", "/c", "yarn audit --json"]
+    : ["audit", "--json"];
 const audit = spawnSync(yarnCommand, yarnArguments, {
   cwd: webAppDir,
   encoding: "utf8",
@@ -84,7 +84,7 @@ for (const advisory of advisories) {
   blocking.set(id, `${advisory.severity} ${advisory.module_name}: ${advisory.title}`);
 }
 
-console.log(`Production audit summary: ${JSON.stringify(summary)}`);
+console.log(`Full console audit summary: ${JSON.stringify(summary)}`);
 if (blocking.size > 0) {
   for (const [id, description] of blocking) console.error(`${id} ${description}`);
   process.exit(1);
