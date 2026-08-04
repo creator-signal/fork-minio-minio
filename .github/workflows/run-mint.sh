@@ -7,7 +7,8 @@ export ACCESS_KEY="$2"
 export SECRET_KEY="$3"
 export JOB_NAME="$4"
 export MINT_MODE="full"
-export MINT_IMAGE="docker.io/minio/mint@sha256:f80ec8f981a5b54d98c1bbbbe7a191e5a2c696c5f45f4d18f712c418cec6e61d"
+export MINT_SOURCE_COMMIT="befedef1f35389666df0885fe2157118c6f425c3"
+export MINT_IMAGE="creator-signal/minio-mint:${MINT_SOURCE_COMMIT}"
 
 docker system prune -f || true
 docker volume prune -f || true
@@ -16,9 +17,14 @@ docker volume ls -q -f dangling=true | xargs -r docker volume rm || true
 ## change working directory
 cd .github/workflows/mint
 
-# The upstream server is archived, so use the last stable Mint release rather
-# than the moving edge tag, whose future S3 assertions can outpace this server.
-docker pull "${MINT_IMAGE}"
+# The upstream server and Mint repositories are archived. Build the immutable
+# Mint source revision used immediately before MinIO's last successful upstream
+# Mint workflow instead of relying on stale `latest` or moving `edge` tags.
+if ! docker image inspect "${MINT_IMAGE}" >/dev/null 2>&1; then
+	docker build \
+		--tag "${MINT_IMAGE}" \
+		"https://github.com/minio/mint.git#${MINT_SOURCE_COMMIT}"
+fi
 
 docker compose -f minio-${MODE}.yaml up -d
 sleep 1m
