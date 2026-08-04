@@ -18,27 +18,42 @@ jobs:
   build:
     name: Go ${{ matrix.go-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       matrix:
         go-version: [1.24.x]
         os: [ubuntu-latest]
+    env:
+      CGO_ENABLED: 0
+      GO111MODULE: on
+      MINIO_KMS_SECRET_KEY: "my-minio-key:oyArl7zlPECEduNbB1KXgdzDn2Bdpvvw0l8VO51HQnY="
+      MINIO_KMS_AUTO_ENCRYPTION: on
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
           check-latest: true
-      - name: Build on ${{ matrix.os }}
+      - name: Prepare ${{ matrix.os }}
         if: matrix.os == 'ubuntu-latest'
-        env:
-          CGO_ENABLED: 0
-          GO111MODULE: on
-          MINIO_KMS_SECRET_KEY: "my-minio-key:oyArl7zlPECEduNbB1KXgdzDn2Bdpvvw0l8VO51HQnY="
-          MINIO_KMS_AUTO_ENCRYPTION: on
         run: |
           sudo sysctl net.ipv6.conf.all.disable_ipv6=0
           sudo sysctl net.ipv6.conf.default.disable_ipv6=0
-          make verify-healing
-          make verify-healing-inconsistent-versions
-          make verify-healing-with-root-disks
-          make verify-healing-with-rewrite
+      # The full Creator Signal console/admin graph makes three concurrent
+      # race-instrumented servers unsuitable for the standard hosted runner.
+      # Repository-wide and IAM/OIDC race coverage remains in the other jobs;
+      # healing exercises the production-shaped binary built below.
+      - name: Build production-shaped server
+        run: make build
+      - name: Verify drive replacement healing
+        run: timeout --foreground --kill-after=30s 20m env bash "$PWD/buildscripts/verify-healing.sh"
+      - name: Verify empty erasure-set healing
+        run: timeout --foreground --kill-after=30s 10m env bash "$PWD/buildscripts/verify-healing-empty-erasure-set.sh"
+      - name: Verify inconsistent-version healing
+        run: timeout --foreground --kill-after=30s 10m env bash "$PWD/buildscripts/heal-inconsistent-versions.sh"
+      - name: Verify version resolution
+        run: timeout --foreground --kill-after=30s 10m env bash "$PWD/buildscripts/resolve-right-versions.sh"
+      - name: Verify root-disk healing
+        run: timeout --foreground --kill-after=30s 10m env bash "$PWD/buildscripts/verify-healing-with-root-disks.sh"
+      - name: Verify metadata rewrite healing
+        run: timeout --foreground --kill-after=30s 10m env bash "$PWD/buildscripts/rewrite-old-new.sh"
