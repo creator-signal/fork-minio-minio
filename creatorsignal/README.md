@@ -39,6 +39,7 @@ These are console HTTP handlers and panels backed by MinIO's retained S3/admin A
 - The UI is rebuilt from committed source and lockfile. High and critical production dependency advisories fail CI.
 - `GHSA-qwww-vcr4-c8h2` is the sole documented high-severity reachability exception: it affects React Router RSC action handling, while this console uses `BrowserRouter` declarative mode and no React Server Components. The audit script invalidates the exception if RSC markers appear.
 - The image pipeline scans the built runtime for fixed high/critical vulnerabilities and emits an OCI SBOM plus provenance attestations.
+- Release UI builds omit platform-dependent source maps, keeping generated assets reproducible without publishing bundled source content.
 - The distribution builds with Go `1.25.12` and an Alpine `3.23` runtime. Root-module security pins refresh the archived server's vulnerable standard library, cryptography, networking, telemetry, gRPC and Prometheus dependency graph without changing MinIO feature code.
 - The fork is frozen by default. Dependency or base-image refreshes require a reviewed issue, regenerated UI assets, the full compatibility gate and a new immutable release tag.
 

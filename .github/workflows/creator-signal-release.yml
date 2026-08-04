@@ -78,6 +78,7 @@ jobs:
         working-directory: creatorsignal/console/web-app
         env:
           CI: "true"
+          GENERATE_SOURCEMAP: "false"
         run: |
           yarn install --frozen-lockfile --ignore-scripts --non-interactive
           yarn build
