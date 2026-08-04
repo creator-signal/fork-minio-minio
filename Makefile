@@ -11,6 +11,8 @@ TAG ?= $(REPO)/minio:$(VERSION)
 
 GOLANGCI_DIR = .bin/golangci/$(GOLANGCI_VERSION)
 GOLANGCI = $(GOLANGCI_DIR)/golangci-lint
+GOLANGCI_VERSION ?= v2.11.3
+GOLANGCI_INSTALLER_COMMIT = 6008b81b81c690c046ffc3fd5bce896da715d5fd
 
 all: build
 
@@ -23,7 +25,7 @@ help: ## print this help
 
 getdeps: ## fetch necessary dependencies
 	@mkdir -p ${GOPATH}/bin
-	@echo "Installing golangci-lint" && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOLANGCI_DIR)
+	@echo "Installing golangci-lint $(GOLANGCI_VERSION)" && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/$(GOLANGCI_INSTALLER_COMMIT)/install.sh | sh -s -- -b $(GOLANGCI_DIR) $(GOLANGCI_VERSION)
 
 crosscompile: ## cross compile minio
 	@(env bash $(PWD)/buildscripts/cross-compile.sh)
