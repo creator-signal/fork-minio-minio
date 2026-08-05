@@ -1060,6 +1060,11 @@ func (w *trackingResponseWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
+// Flush preserves streaming response support through the tracking wrapper.
+func (w *trackingResponseWriter) Flush() {
+	xhttp.Flush(w.ResponseWriter)
+}
+
 func (w *trackingResponseWriter) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }

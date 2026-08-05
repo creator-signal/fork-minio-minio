@@ -7,18 +7,29 @@ export ACCESS_KEY="$2"
 export SECRET_KEY="$3"
 export JOB_NAME="$4"
 export MINT_MODE="full"
+export MINT_SOURCE_COMMIT="befedef1f35389666df0885fe2157118c6f425c3"
+export MINT_IMAGE="creator-signal/minio-mint:${MINT_SOURCE_COMMIT}"
 
 docker system prune -f || true
 docker volume prune -f || true
-docker volume rm $(docker volume ls -f dangling=true) || true
+docker volume ls -q -f dangling=true | xargs -r docker volume rm || true
 
 ## change working directory
 cd .github/workflows/mint
 
-## always pull latest
-docker pull docker.io/minio/mint:edge
+# The upstream server and Mint repositories are archived. Build the immutable
+# Mint source revision used immediately before MinIO's last successful upstream
+# Mint workflow instead of relying on stale `latest` or moving `edge` tags.
+if ! docker image inspect "${MINT_IMAGE}" >/dev/null 2>&1; then
+	docker build \
+		--build-arg "MINT_SOURCE_COMMIT=${MINT_SOURCE_COMMIT}" \
+		--build-context "mint-source=https://github.com/minio/mint.git#${MINT_SOURCE_COMMIT}" \
+		--file ../../../creatorsignal/mint.Dockerfile \
+		--tag "${MINT_IMAGE}" \
+		../../..
+fi
 
-docker-compose -f minio-${MODE}.yaml up -d
+docker compose -f minio-${MODE}.yaml up -d
 sleep 1m
 
 docker system prune -f || true
@@ -26,11 +37,11 @@ docker volume prune -f || true
 docker volume rm $(docker volume ls -q -f dangling=true) || true
 
 # Stop two nodes, one of each pool, to check that all S3 calls work while quorum is still there
-[ "${MODE}" == "pools" ] && docker-compose -f minio-${MODE}.yaml stop minio2
-[ "${MODE}" == "pools" ] && docker-compose -f minio-${MODE}.yaml stop minio6
+[ "${MODE}" == "pools" ] && docker compose -f minio-${MODE}.yaml stop minio2
+[ "${MODE}" == "pools" ] && docker compose -f minio-${MODE}.yaml stop minio6
 
 # Pause one node, to check that all S3 calls work while one node goes wrong
-[ "${MODE}" == "resiliency" ] && docker-compose -f minio-${MODE}.yaml pause minio4
+[ "${MODE}" == "resiliency" ] && docker compose -f minio-${MODE}.yaml pause minio4
 
 docker run --rm --net=mint_default \
 	--name="mint-${MODE}-${JOB_NAME}" \
@@ -39,11 +50,11 @@ docker run --rm --net=mint_default \
 	-e SECRET_KEY="${SECRET_KEY}" \
 	-e ENABLE_HTTPS=0 \
 	-e MINT_MODE="${MINT_MODE}" \
-	docker.io/minio/mint:edge
+	"${MINT_IMAGE}"
 
 # FIXME: enable this after fixing aws-sdk-java-v2 tests
 # # unpause the node, to check that all S3 calls work while one node goes wrong
-# [ "${MODE}" == "resiliency" ] && docker-compose -f minio-${MODE}.yaml unpause minio4
+# [ "${MODE}" == "resiliency" ] && docker compose -f minio-${MODE}.yaml unpause minio4
 # [ "${MODE}" == "resiliency" ] && docker run --rm --net=mint_default \
 # 	--name="mint-${MODE}-${JOB_NAME}" \
 # 	-e SERVER_ENDPOINT="nginx:9000" \
@@ -51,9 +62,9 @@ docker run --rm --net=mint_default \
 # 	-e SECRET_KEY="${SECRET_KEY}" \
 # 	-e ENABLE_HTTPS=0 \
 # 	-e MINT_MODE="${MINT_MODE}" \
-# 	docker.io/minio/mint:edge
+# 	"${MINT_IMAGE}"
 
-docker-compose -f minio-${MODE}.yaml down || true
+docker compose -f minio-${MODE}.yaml down || true
 sleep 10s
 
 docker system prune -f || true

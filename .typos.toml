@@ -1,5 +1,13 @@
 [files]
-extend-exclude = [".git/", "docs/", "CREDITS", "go.mod", "go.sum"]
+extend-exclude = [
+    ".git/",
+    "docs/",
+    "CREDITS",
+    "go.mod",
+    "go.sum",
+    "creatorsignal/console/",
+    "creatorsignal/mds/",
+]
 ignore-hidden = false
 
 [default]
@@ -20,6 +28,7 @@ extend-ignore-re = [
 [default.extend-words]
 "encrypter" = "encrypter"
 "kms" = "kms"
+"replciation" = "replciation"
 "requestor" = "requestor"
 
 [default.extend-identifiers]
@@ -27,11 +36,13 @@ extend-ignore-re = [
 
 [type.go.extend-identifiers]
 "bui" = "bui"
+"cpy" = "cpy"
 "dm2nd" = "dm2nd"
 "ot" = "ot"
 "ParseND" = "ParseND"
 "ParseNDStream" = "ParseNDStream"
 "pn" = "pn"
+"sterr" = "sterr"
 "TestGetPartialObjectMisAligned" = "TestGetPartialObjectMisAligned"
 "thr" = "thr"
 "toi" = "toi"

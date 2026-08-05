@@ -2,7 +2,7 @@
 x-minio-common: &minio-common
   build:
     context: ../../.
-    dockerfile: Dockerfile
+    dockerfile: creatorsignal/Dockerfile
   command: server --console-address ":9001" http://minio{1...4}/data{1...8}
   expose:
     - "9000"
@@ -10,7 +10,7 @@ x-minio-common: &minio-common
   environment:
     MINIO_CI_CD: 1
   healthcheck:
-    test: ["CMD", "mc", "ready", "local"]
+    test: ["CMD", "curl", "--fail", "http://localhost:9000/minio/health/live"]
     interval: 5s
     timeout: 5s
     retries: 5
