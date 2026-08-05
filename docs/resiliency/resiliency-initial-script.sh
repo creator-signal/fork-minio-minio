@@ -4,7 +4,7 @@
 
 echo "script failed" >resiliency-initial.log # assume initial state
 
-echo "sleep to wait for MinIO Server to be ready prior mc commands"
+echo "wait for MinIO Server to be ready prior to mc commands"
 # https://github.com/minio/mc/issues/3599
 
 MINIO_SERVER_URL="http://127.0.0.1:9000"
@@ -14,10 +14,12 @@ SRC_DIR="/tmp/data"
 INLINED_DIR="/tmp/inlined"
 DEST_DIR="/tmp/dest"
 
-TIMEOUT=10
+TIMEOUT=120
 while true; do
 	if [[ ${TIMEOUT} -le 0 ]]; then
 		echo retry: timeout while running: mc alias set
+		docker compose -f "${DOCKER_COMPOSE_FILE}" ps
+		docker compose -f "${DOCKER_COMPOSE_FILE}" logs --no-color --tail=100
 		exit 1
 	fi
 	eval ./mc alias set "${ALIAS_NAME}" "${MINIO_SERVER_URL}" minioadmin minioadmin && break
