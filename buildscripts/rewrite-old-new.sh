@@ -21,6 +21,21 @@ function download_old_release() {
 	fi
 }
 
+function wait_for_server() {
+	local pid=$1
+
+	if timeout --foreground --kill-after=10s 2m "${WORK_DIR}/mc" ready minio/; then
+		return
+	fi
+
+	echo "server1 log:"
+	cat "${WORK_DIR}/server1.log"
+	echo "FAILED"
+	kill "${pid}" 2>/dev/null || true
+	purge "$WORK_DIR"
+	exit 1
+}
+
 function verify_rewrite() {
 	start_port=$1
 
@@ -46,7 +61,7 @@ function verify_rewrite() {
 	pid=$!
 	disown $pid
 
-	"${WORK_DIR}/mc" ready minio/
+	wait_for_server "${pid}"
 
 	if ! ps -p ${pid} 1>&2 >/dev/null; then
 		echo "server1 log:"
@@ -79,7 +94,7 @@ function verify_rewrite() {
 	pid=$!
 	disown $pid
 
-	"${WORK_DIR}/mc" ready minio/
+	wait_for_server "${pid}"
 
 	if ! ps -p ${pid} 1>&2 >/dev/null; then
 		echo "server1 log:"

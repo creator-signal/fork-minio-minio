@@ -57,8 +57,8 @@ jobs:
         run: timeout --foreground --kill-after=30s 10m env bash "$PWD/buildscripts/verify-healing-with-root-disks.sh"
 
   rewrite:
-    name: Legacy metadata rewrite on ubuntu-latest
-    runs-on: ubuntu-latest
+    name: Legacy metadata rewrite on ubuntu-22.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
       CGO_ENABLED: 0
