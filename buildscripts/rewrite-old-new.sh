@@ -16,9 +16,13 @@ fi
 
 function download_old_release() {
 	if [ ! -f minio.RELEASE.2020-10-28T08-16-50Z ]; then
-		curl --silent -O https://dl.minio.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2020-10-28T08-16-50Z
-		chmod a+x minio.RELEASE.2020-10-28T08-16-50Z
+		curl --fail --location --silent --show-error \
+			--output minio.RELEASE.2020-10-28T08-16-50Z \
+			https://github.com/minio/minio/releases/download/RELEASE.2020-10-28T08-16-50Z/minio.linux-amd64.RELEASE.2020-10-28T08-16-50Z
 	fi
+
+	echo "2c7e6774a9befbba6a126791f363550f8f14e34008e100d0e0e57e2ad9b2ab8c  minio.RELEASE.2020-10-28T08-16-50Z" | sha256sum --check --status
+	chmod a+x minio.RELEASE.2020-10-28T08-16-50Z
 }
 
 function wait_for_server() {
