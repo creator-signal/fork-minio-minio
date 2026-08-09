@@ -50,12 +50,14 @@ import HelpMenu from "../HelpMenu";
 import { api } from "api";
 import { KmsStatusResponse } from "api/consoleApi";
 import { errorToHandler } from "api/errors";
+import { supportsAdvancedKMSMonitoring } from "./kmsCapabilities";
 
 const Status = () => {
   const dispatch = useAppDispatch();
   const [curTab, setCurTab] = useState<string>("simple-tab-0");
 
-  const [isKMSSecretKey, setIsKMSSecretKey] = useState<boolean>(true);
+  const [advancedMonitoringSupported, setAdvancedMonitoringSupported] =
+    useState<boolean>(false);
   const [status, setStatus] = useState<KmsStatusResponse | null>(null);
   const [loadingStatus, setLoadingStatus] = useState<boolean>(true);
   const [metrics, setMetrics] = useState<any | null>(null);
@@ -70,13 +72,13 @@ const Status = () => {
   ]);
   const displayMetrics =
     hasPermission(CONSOLE_UI_RESOURCE, [IAM_SCOPES.KMS_METRICS]) &&
-    !isKMSSecretKey;
+    advancedMonitoringSupported;
   const displayAPIs =
     hasPermission(CONSOLE_UI_RESOURCE, [IAM_SCOPES.KMS_APIS]) &&
-    !isKMSSecretKey;
+    advancedMonitoringSupported;
   const displayVersion =
     hasPermission(CONSOLE_UI_RESOURCE, [IAM_SCOPES.KMS_Version]) &&
-    !isKMSSecretKey;
+    advancedMonitoringSupported;
 
   useEffect(() => {
     const loadStatus = () => {
@@ -85,7 +87,9 @@ const Status = () => {
         .then((result) => {
           if (result.data) {
             setStatus(result.data);
-            setIsKMSSecretKey(result.data.name === "SecretKey");
+            setAdvancedMonitoringSupported(
+              supportsAdvancedKMSMonitoring(result.data.name),
+            );
           }
         })
         .catch((err) => {
