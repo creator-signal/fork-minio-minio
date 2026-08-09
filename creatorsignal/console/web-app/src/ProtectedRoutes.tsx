@@ -22,6 +22,7 @@ import LoadingComponent from "./common/LoadingComponent";
 import { fetchSession } from "./screens/LoginPage/sessionThunk";
 import { setLocationPath } from "./systemSlice";
 import { SessionCallStates } from "./screens/Console/consoleSlice.types";
+import { LOGIN_REDIRECT_TARGET } from "./routeContracts";
 
 interface ProtectedRouteProps {
   Component: any;
@@ -39,7 +40,7 @@ const ProtectedRoute = ({ Component }: ProtectedRouteProps) => {
 
   const StorePathAndRedirect = () => {
     localStorage.setItem("redirect-path", pathname);
-    return <Navigate to={{ pathname: `login` }} />;
+    return <Navigate to={LOGIN_REDIRECT_TARGET} replace />;
   };
 
   useEffect(() => {
